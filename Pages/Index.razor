@@ -1,0 +1,137 @@
+﻿@page "/"
+@using System.Data;
+@using System.Data.SqlClient;
+@using System.Web;
+@{
+    connection.con.Open();
+    string player_id = "1";
+}
+
+
+<PageTitle>首页</PageTitle>
+
+<h1>陆明宇的职业生涯</h1>
+<br />
+
+
+@{
+    string sql = "SELECT DISTINCT team_id, team_name, team_type, start_year, end_year FROM [Career].[dbo].[player_competition] AS PC LEFT JOIN [Career].[dbo].[teams] AS T ON PC.team_id=T.id ORDER BY start_year, end_year, team_id ASC";
+    var results = connection.query(sql);
+    int current_club = -1;
+    while (results.Read()) {
+        if (Int32.Parse(results["team_id"].ToString()) != current_club && results["team_type"].ToString().Trim() == "club") {
+            current_club = Int32.Parse(results["team_id"].ToString());
+    <div class="row">
+        <div class="col-120" style="height: 150px; font-weight: bold; line-height: 150px;">
+            <img class="team-badge" src="images/teams/@(results["team_id"]).png" /> @results["team_name"]
+        </div>
+    </div>
+        }
+
+        //calculate season name
+        string start_year = results["start_year"].ToString();
+        string end_year = results["end_year"].ToString();
+        string season;
+        if (start_year == end_year) {
+            season = start_year + "赛季";
+        }
+        else if (Int32.Parse(end_year) > 0) {
+            season = start_year + "/" + end_year + "赛季";
+        }
+        else if (end_year == "-2") {
+            season = start_year;
+        }
+        else {
+            season = "";
+        }
+
+        string style = "height: 40px; line-height: 40px;";
+        string class_name = "col-xxl-15 col-lg-24 col-md-30 col-40";
+
+    <div class="row">
+            <div style="@style" class="@class_name col-120 season-name">@season</div>
+            @{
+                for (int i = 1; i <= 7; i++)
+                {
+                    string sql1 = $"SELECT competition_id, competition_name, result FROM [Career].[dbo].[player_competition] AS PC LEFT JOIN [Career].[dbo].[competitions] AS C ON PC.competition_id=C.id WHERE team_id={results["team_id"]} AND start_year={results["start_year"]} AND end_year={results["end_year"]} AND competition_type={i}";
+                    var results1 = connection.query(sql1);
+                    string competition_id = "";
+                    string competition_name = "";
+                    string result = "";
+                    while (results1.Read())
+                    {
+                        competition_id = results1["competition_id"].ToString().Trim();
+                        competition_name = results1["competition_name"].ToString().Trim();
+                        result = results1["result"].ToString().Trim();
+                    }
+
+                    //different stlle for different situations
+                    string href = $"{player_id}&{@competition_id}&{start_year}&{end_year}";
+                    if (result == "冠军")
+                    {
+                        <div style="@style" class="@class_name">
+                            <a href="competition/@href" style="color: red; font-weight: bold; text-decoration: none;" target="_blank">
+                                <img class="team-badge" src="images/competitions/@(competition_id).png" />@competition_name@result
+                            </a>
+                        </div>
+                    }
+                    else if (result != "")
+                    {
+                        <div style="@style" class="@class_name">
+                            <a href="competition/@href" style="color: black; font-weight: normal; text-decoration: none;" target="_blank">
+                                <img class="team-badge" src="images/competitions/@(competition_id).png" />@competition_name@result
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        if (i <= 3 && end_year == "-2") {
+                            <div style="@style" class="col-xxl-15 col-lg-24 d-lg-block d-none"></div>
+                        }
+                        else {
+                            <div style="@style" class="col-xxl-15 d-xxl-block d-none"></div>
+                        }
+                    }
+                }
+            }
+    </div>
+    }
+}
+
+
+<style>
+@@media (max-width: 767px) {
+    .season-name {
+        margin-top: 30px;
+    }
+}
+</style>
+
+
+@{
+    connection.con.Close();
+}
+
+@code {
+    Connection connection = new Connection();
+
+    public class Connection
+    {
+        private string connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;MultipleActiveResultSets=true";
+        public SqlConnection con;
+
+        public Connection()
+        {
+            con = new SqlConnection(connectionString);
+        }
+
+        public SqlDataReader query(string command)
+        {
+            SqlCommand cmd = new SqlCommand(command, con);
+
+            var reader = cmd.ExecuteReader();
+
+            return reader;
+        }
+    }
+}

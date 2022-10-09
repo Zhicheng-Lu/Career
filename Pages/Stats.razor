@@ -1,0 +1,39 @@
+﻿@page "/stats"
+@using System.Data;
+@using System.Data.SqlClient;
+@{connection.con.Open();}
+
+
+<PageTitle>数据</PageTitle>
+
+<h1>个人生涯数据</h1>
+
+
+@{connection.con.Close();}
+
+@code {
+    Connection connection = new Connection();
+
+    public class Connection {
+        private string connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False";
+        public SqlConnection con;
+
+        public Connection() {
+            con = new SqlConnection(connectionString);
+        }
+
+        public SqlDataReader query(string command) {
+            SqlCommand cmd = new SqlCommand(command, con);
+
+            var reader = cmd.ExecuteReader();
+
+            //while (reader.Read()) {
+            //    string[] row = reader.GetValue;
+            //}
+
+            //con.Close();
+
+            return reader;
+        }
+    }
+}

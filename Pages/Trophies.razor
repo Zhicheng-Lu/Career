@@ -1,0 +1,150 @@
+﻿@page "/trophies"
+@using System.Data;
+@using System.Data.SqlClient;
+@{
+    connection.con.Open();
+}
+
+<PageTitle>荣誉</PageTitle>
+
+<h1>荣誉簿</h1>
+<br />
+
+<div class="row">
+    <div class="col-lg-55" style="vertical-align: top;">
+        <table style="width: 100%; table-layout: fixed;">
+            <thead><tr><th colspan="2" style="text-align: center;">团队荣誉</th></tr></thead>
+
+            @{
+                string sql = "SELECT competition_id, COUNT(*) AS count FROM [Career].[dbo].[player_competition] AS PC LEFT JOIN [Career].[dbo].[competitions] AS C ON PC.competition_id=C.id WHERE player_id=1 AND competition_type=7 AND result LIKE N'%冠军%' GROUP BY player_id, competition_id ORDER BY competition_id ASC";
+                var results = connection.query(sql);
+                while (results.Read()) {
+                        <tr>
+                            <td><img class="team-badge" src="images/competitions/@(results["competition_id"]).png" /> @get_name("competition", results["competition_id"].ToString())</td>
+                            <td>&times;@results["count"]（@get_years("1", "competition", results["competition_id"].ToString())）</td>
+                        </tr>
+                }
+            }
+
+            <tr></tr>
+
+            @{
+                int[] orders = { 3, 1, 2, 4, 5, 6 };
+                foreach (var i in orders) {
+                    sql = $"SELECT competition_id, COUNT(*) AS count FROM [Career].[dbo].[player_competition] AS PC LEFT JOIN [Career].[dbo].[competitions] AS C ON PC.competition_id=C.id WHERE player_id=1 AND competition_type={i} AND result LIKE N'%冠军%' GROUP BY player_id, competition_id ORDER BY COUNT(*) DESC";
+                    results = connection.query(sql);
+                    while (results.Read())
+                    {
+                        <tr>
+                            <td><img class="team-badge" src="images/competitions/@(results["competition_id"]).png" /> @get_name("competition", results["competition_id"].ToString())</td>
+                            <td>&times;@results["count"]（@get_years("1", "competition", results["competition_id"].ToString())）</td>
+                        </tr>
+                    }
+                }
+            }
+        </table>
+    </div>
+
+    <div class="offset-lg-10 col-lg-55 individual-honours" style="vertical-align: top;">
+        <table style="width: 100%; table-layout: fixed;">
+            <thead><tr><th colspan="2" style="text-align: center;">个人荣誉</th></tr></thead>
+        
+            @{
+                sql = "SELECT honour_id, honour_importance, COUNT(*) AS count FROM [Career].[dbo].[player_honour] AS PH LEFT JOIN [Career].[dbo].[honours] AS H ON PH.honour_id=H.id GROUP BY player_id, honour_id, honour_importance ORDER BY honour_importance ASC";
+                results = connection.query(sql);
+                string importance = "";
+                while (results.Read()) {
+                    if (results["honour_importance"].ToString() != importance && importance != "") {
+                        <tr></tr>
+                    }
+
+                    importance = results["honour_importance"].ToString();
+
+                    <tr>
+                        <td><img class="team-badge" src="images/honours/@(results["honour_id"]).png" /> @get_name("honour", results["honour_id"].ToString())</td>
+                        <td>&times;@results["count"]（@get_years("1", "honour", results["honour_id"].ToString())）</td>
+                    </tr>
+                }
+            }
+
+        </table>
+    </div>
+</div>
+
+<style>
+table, th, td {
+    border: 1px solid black;
+}
+
+@@media (max-width: 991px) {
+    .individual-honours {
+        margin-top: 80px;
+    }
+}
+</style>
+
+
+@{
+    connection.con.Close();
+}
+
+@code {
+    Connection connection = new Connection();
+
+    //get competition or player name
+    public string get_name(string table_name, string id) {
+        string sql = $"SELECT {table_name}_name FROM [Career].[dbo].[{table_name}s] WHERE id={id}";
+        var results = connection.query(sql);
+        while (results.Read()) {
+            return results[$"{table_name}_name"].ToString();
+        }
+        return "";
+    }
+
+    //get years of champions
+    public string get_years(string player_id, string table_name, string id) {
+        string years = "";
+
+        string sql = $"SELECT start_year, end_year FROM [Career].[dbo].[player_{table_name}] WHERE player_id={player_id} AND {table_name}_id={id}" + ((table_name == "competition") ? " AND result LIKE N'%冠军%'" : "");
+        var results = connection.query(sql);
+        while (results.Read()) {
+            string start_year = results["start_year"].ToString();
+            string end_year = results["end_year"].ToString();
+            string season;
+            if (start_year == end_year || Int32.Parse(end_year) < 0) {
+                season = start_year;
+            }
+            else {
+                season = start_year + "/" + end_year;
+            }
+
+            if (years != "") {
+                years += "，";
+            }
+
+            years += season;
+        }
+
+        return years;
+    }
+
+    public class Connection
+    {
+        private string connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;MultipleActiveResultSets=true";
+        public SqlConnection con;
+
+        public Connection()
+        {
+            con = new SqlConnection(connectionString);
+        }
+
+        public SqlDataReader query(string command)
+        {
+            SqlCommand cmd = new SqlCommand(command, con);
+
+            var reader = cmd.ExecuteReader();
+
+            return reader;
+        }
+    }
+}

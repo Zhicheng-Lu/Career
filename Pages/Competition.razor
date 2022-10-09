@@ -1,0 +1,75 @@
+﻿@page "/competition/{info}"
+@using System.Data;
+@using System.Data.SqlClient;
+@using System.Web;
+@{
+    connection.con.Open();
+}
+
+
+@{
+    string[] infos = info.Split('&');
+    string player_id = infos[0];
+    string competition_id = infos[1];
+    string start_year = infos[2];
+    string end_year = infos[3];
+
+    string competition_name = get_name("competition", competition_id);
+    string time;
+    if (Int32.Parse(end_year) < 0) {
+        time = start_year + "年";
+    }
+    else if (start_year == end_year) {
+        time = start_year + "赛季";
+    }
+    else {
+        time = start_year + "/" + end_year + "赛季";
+    }
+
+    string title = time + competition_name;
+}
+
+<PageTitle>@title</PageTitle>
+<h1>@title</h1>
+
+@{
+    connection.con.Close();
+}
+
+
+@code {
+    [Parameter]
+    public string info { get; set; } = "";
+
+    Connection connection = new Connection();
+
+    public class Connection
+    {
+        private string connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;MultipleActiveResultSets=true";
+        public SqlConnection con;
+
+        public Connection()
+        {
+            con = new SqlConnection(connectionString);
+        }
+
+        public SqlDataReader query(string command)
+        {
+            SqlCommand cmd = new SqlCommand(command, con);
+
+            var reader = cmd.ExecuteReader();
+
+            return reader;
+        }
+    }
+
+    public string get_name(string table_name, string id) {
+        string sql = $"SELECT {table_name}_name FROM [Career].[dbo].[{table_name}s] WHERE id={id}";
+        var results = connection.query(sql);
+        while (results.Read())
+        {
+            return results[$"{table_name}_name"].ToString();
+        }
+        return "";
+    }
+}
